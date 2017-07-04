@@ -20,7 +20,7 @@ RUN set -ex; \
 	done
 
 ENV TOMCAT_MAJOR 8
-ENV TOMCAT_VERSION 8.5.14
+ENV TOMCAT_VERSION 8.5.16
 
 # https://issues.apache.org/jira/browse/INFRA-8753?focusedCommentId=14735394#comment-14735394
 ENV TOMCAT_TGZ_URL https://www.apache.org/dyn/closer.cgi?action=download&filename=tomcat/tomcat-$TOMCAT_MAJOR/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz
@@ -44,6 +44,8 @@ RUN set -x \
 	&& tar -xvf bin/tomcat-native.tar.gz -C "$nativeBuildDir" --strip-components=1 \
 	&& apk add --no-cache --virtual .native-build-deps \
 		apr-dev \
+		coreutils \
+		dpkg-dev dpkg \
 		gcc \
 		libc-dev \
 		make \
@@ -52,13 +54,15 @@ RUN set -x \
 	&& ( \
 		export CATALINA_HOME="$PWD" \
 		&& cd "$nativeBuildDir/native" \
+		&& gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
 		&& ./configure \
+			--build="$gnuArch" \
 			--libdir="$TOMCAT_NATIVE_LIBDIR" \
 			--prefix="$CATALINA_HOME" \
 			--with-apr="$(which apr-1-config)" \
 			--with-java-home="$(docker-java-home)" \
 			--with-ssl=yes \
-		&& make -j$(getconf _NPROCESSORS_ONLN) \
+		&& make -j "$(nproc)" \
 		&& make install \
 	) \
 	&& runDeps="$( \
@@ -82,7 +86,6 @@ RUN set -e \
 		echo >&2 "$nativeLines"; \
 		exit 1; \
 	fi
-
 
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
