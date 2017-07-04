@@ -83,7 +83,6 @@ RUN set -e \
 		exit 1; \
 	fi
 
-ADD server.xml  /usr/local/tomcat/conf/server.xml
 
-EXPOSE 80
+EXPOSE 8080
 CMD ["catalina.sh", "run"]
